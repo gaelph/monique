@@ -154,24 +154,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Move to the next search match
 		case key.Matches(msg, m.keyMap.NextMatch):
 			if !m.hasFocus() && m.hasSearchResults() {
-				line := m.getNextSearchMatchLine()
-				cmds = m.goToLine(line, cmds)
+				m.activeMatch = m.getNextActiveMatch()
+				// cmds = m.goToMatch(m.activeMatch, cmds)
 			}
 
 		// Move to the previous search match
 		case key.Matches(msg, m.keyMap.PreviousMatch):
 			if !m.hasFocus() && m.hasSearchResults() {
-				line := m.getPreviousMatchLine()
-				cmds = m.goToLine(line, cmds)
+				m.activeMatch = m.getPreviousActiveMatch()
+				// cmds = m.goToMatch(m.activeMatch, cmds)
 			}
 		}
 		// Sets the content with filter and search highlights if any
 		m.viewport.SetContent(m.decorateSearch(m.filterContent(m.content)))
 
-		// Move to the next search match as typing
+		// Move to the next search match during search
 		if m.isSearching() && m.hasSearchResults() {
-			if line := m.getActiveMatchLine(); line >= 0 {
-				cmds = m.goToLine(line, cmds)
+			if m.activeMatch >= 0 {
+				cmds = m.goToMatch(m.activeMatch, cmds)
+				// if line := m.getActiveMatchLine(); line >= 0 {
+				// 	cmds = m.goToLine(line, cmds)
 			}
 		} else {
 			// Move to the bottom of the viewport
@@ -216,6 +218,7 @@ func (m model) View() string {
 	if !m.ready {
 		return "\n  Initializing..."
 	}
+	m.viewport.SetContent(m.decorateSearch(m.filterContent(m.content)))
 	return fmt.Sprintf("%s\n%s", m.viewport.View(), m.footerView())
 }
 
@@ -271,24 +274,26 @@ func (m *model) getActiveMatchLine() int {
 	return m.searchResults[m.activeMatch].line
 }
 
-func (m *model) getNextSearchMatchLine() int {
+func (m *model) getNextActiveMatch() int {
 	if m.activeMatch < 0 {
 		m.activeMatch = len(m.searchResults) - 1
 	}
 	m.activeMatch -= 1
 	m.activeMatch = boundLoop(m.activeMatch, 0, len(m.searchResults)-1)
 
-	return m.searchResults[m.activeMatch].line
+	return m.activeMatch
+	// return m.searchResults[m.activeMatch].line
 }
 
-func (m *model) getPreviousMatchLine() int {
+func (m *model) getPreviousActiveMatch() int {
 	if m.activeMatch < 0 {
 		m.activeMatch = len(m.searchResults) - 1
 	}
 	m.activeMatch += 1
 	m.activeMatch = boundLoop(m.activeMatch, 0, len(m.searchResults)-1)
 
-	return m.searchResults[m.activeMatch].line
+	return m.activeMatch
+	// return m.searchResults[m.activeMatch].line
 }
 
 func boundLoop(val, min, max int) int {
@@ -303,6 +308,11 @@ func boundLoop(val, min, max int) int {
 }
 
 // MARK - Viewport Navigation
+
+func (m model) goToMatch(match int, cmds []tea.Cmd) []tea.Cmd {
+	line := m.searchResults[match].line
+	return m.goToLine(line, cmds)
+}
 
 func (m model) goToLine(line int, cmds []tea.Cmd) []tea.Cmd {
 	m.viewport.SetYOffset(line)
@@ -401,8 +411,12 @@ func (m model) inputPrompt() string {
 	case FILTER:
 		return fmt.Sprintf("%s > ", m.fieldStatus.String())
 	case SEARCH:
-		// active := len(m.searchResults) - (m.activeMatch + 1)
-		return fmt.Sprintf("%s [%d/%d] > ", m.fieldStatus.String(), m.activeMatch, len(m.searchResults))
+		active := m.activeMatch
+		if active < 0 {
+			active = 0
+		}
+		active = len(m.searchResults) - active
+		return fmt.Sprintf("%s [%d/%d] > ", m.fieldStatus.String(), active, len(m.searchResults))
 	}
 	return "> "
 }
@@ -504,23 +518,30 @@ func (m *model) decorateSearch(content string) string {
 		m.activeMatch = len(m.searchResults) - 1
 	}
 
+	offsets := make(map[int]int)
 	for i, searchResult := range m.searchResults {
 		builder := strings.Builder{}
 		currentLine := lines[searchResult.line]
+		offset := offsets[searchResult.line]
+		start := searchResult.start + offset
+		end := searchResult.end + offset
+
 		// from 0 or end of previous match
-		builder.WriteString(currentLine[0:searchResult.start])
+		builder.WriteString(currentLine[0:start])
 		// match
-		if m.activeMatch > 0 && m.activeMatch == i {
+		if m.activeMatch >= 0 && m.activeMatch == i {
 			styled := activeMatchStyle.Render(searchResult.text)
 			builder.WriteString(styled)
 		} else {
 			styled := searchMatchStyle.Render(searchResult.text)
 			builder.WriteString(styled)
 		}
-		builder.WriteString(currentLine[searchResult.end:])
-		currentLine = builder.String()
+		builder.WriteString(currentLine[end:])
+		newLine := builder.String()
+		offset = len(newLine) - len(currentLine)
+		offsets[searchResult.line] += offset
 
-		lines[searchResult.line] = currentLine
+		lines[searchResult.line] = newLine
 	}
 
 	return strings.Join(lines, "\n")
