@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/streetsidesoftware/cspell/main/cspell.schema.json",
+  "import": ["~/cspell.config.yml"],
+  "version": "0.2",
+  "dictionaries": ["project-words"],
+  "dictionaryDefinitions": [
+    {
+      "name": "project-words",
+      "addWords": true,
+      "path": "./.cspell/project-words.txt"
+    }
+  ],
+  "languageSettings": [
+    {
+      "languageId": "go",
+      "locale": "*",
+      "allowCompoundWords": false,
+      "dictionaries": [
+        "fr-fr",
+        "softwareTerms",
+        "filetypes",
+        "misc",
+        "project-words"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+fsnotify
+charmbracelet
+textinput
+bubbletea
+lipgloss
+keymaps
+cmds
