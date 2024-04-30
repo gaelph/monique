@@ -7,7 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/gaelph/logstream/runner"
+	"github.com/gaelph/monique/runner"
 )
 
 type Program struct {

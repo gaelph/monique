@@ -4,11 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"strings"
-	"time"
 
-	"github.com/gaelph/logstream/runner"
-	"github.com/gaelph/logstream/viewport"
-	"github.com/gaelph/logstream/watcher"
+	"github.com/gaelph/monique/runner"
+	"github.com/gaelph/monique/viewport"
+	"github.com/gaelph/monique/watcher"
 )
 
 type watchTargets []string
@@ -60,7 +59,6 @@ func main() {
 	w.SetChangeListener(onChange)
 
 	w.Start()
-	time.Sleep(time.Duration(3000) * time.Millisecond)
 
 	go r.Start()
 	p.Run()

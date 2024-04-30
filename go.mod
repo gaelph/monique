@@ -1,4 +1,4 @@
-module github.com/gaelph/logstream
+module github.com/gaelph/monique
 
 go 1.22.2
 
