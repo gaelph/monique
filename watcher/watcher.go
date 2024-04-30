@@ -68,7 +68,6 @@ func (w *Watcher) Start() {
 				continue
 			}
 			w.patterns = append(w.patterns, r)
-			fmt.Printf("Will watch file %s\n", directory)
 		}
 	}
 
