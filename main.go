@@ -4,12 +4,24 @@ import (
 	"flag"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gaelph/logstream/runner"
 	"github.com/gaelph/logstream/viewport"
 	"github.com/gaelph/logstream/watcher"
 )
 
+type watchTargets []string
+
+func (w *watchTargets) String() string {
+	return strings.Join(*w, "\n")
+}
+func (w *watchTargets) Set(value string) error {
+	*w = append(*w, value)
+	return nil
+}
+
+var watchList watchTargets
 var dir string
 var delay int
 var exts string
@@ -21,7 +33,7 @@ var p *viewport.Program
 var w *watcher.Watcher
 
 func main() {
-	flag.StringVar(&dir, "dir", "", "path to the directory to watch")
+	flag.Var(&watchList, "watch", "path to a directory to watch")
 	flag.StringVar(&exts, "exts", "", "file extensions")
 	flag.IntVar(&delay, "delay", 100, "delay in ms")
 
@@ -33,11 +45,8 @@ func main() {
 		extensionList[idx] = strings.TrimSpace(ext)
 	}
 
-	dirs := make([]string, 1)
-	dirs[0] = dir
-
 	// creates a new file watcher
-	w = watcher.NewWatcher(dirs, extensionList)
+	w = watcher.NewWatcher(watchList, extensionList)
 	defer w.Close()
 
 	p = viewport.NewProgram()
@@ -51,6 +60,7 @@ func main() {
 	w.SetChangeListener(onChange)
 
 	w.Start()
+	time.Sleep(time.Duration(3000) * time.Millisecond)
 
 	go r.Start()
 	p.Run()
