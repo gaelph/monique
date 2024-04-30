@@ -61,7 +61,7 @@ func (r *Runner) Start() {
 
 	go func(out chan string) {
 		for {
-			bytes := make([]byte, 1024)
+			bytes := make([]byte, 128)
 			n, err := t.Read(bytes)
 			out <- string(bytes[:n])
 
