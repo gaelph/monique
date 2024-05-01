@@ -20,7 +20,6 @@ type RunnerDelegate interface {
 type Runner struct {
 	Delegate         RunnerDelegate
 	control          chan bool
-	Output           chan string
 	debouncedRestart func()
 	Command          []string
 	delay            int
@@ -31,7 +30,6 @@ func NewRunner(command []string, delay int) *Runner {
 		Command: command,
 		control: make(chan bool),
 		delay:   delay,
-		Output:  make(chan string),
 	}
 
 	r.debouncedRestart = debounce(func() {
@@ -59,11 +57,12 @@ func (r *Runner) Start() {
 		return
 	}
 
-	go func(out chan string) {
+	go func(r *Runner) {
 		for {
-			bytes := make([]byte, 128)
+			bytes := make([]byte, 1024)
 			n, err := t.Read(bytes)
-			out <- string(bytes[:n])
+			// r.Output <- string(bytes[:n])
+			go r.Delegate.OnOutput(*r, string(bytes[:n]))
 
 			if err != nil {
 				if r.Delegate != nil {
@@ -73,7 +72,7 @@ func (r *Runner) Start() {
 			}
 
 		}
-	}(r.Output)
+	}(r)
 
 	defer func() {
 		t.Close()
@@ -87,7 +86,7 @@ func (r *Runner) Start() {
 }
 
 func (r *Runner) Stop() {
-	r.Output <- "Killing process\n"
+	go r.Delegate.OnOutput(*r, "Killing process\n")
 	r.control <- true
 }
 
@@ -103,13 +102,6 @@ func (r *Runner) restart() {
 
 func (r *Runner) SetDelegate(delegate RunnerDelegate) {
 	r.Delegate = delegate
-
-	go func(d RunnerDelegate) {
-		for {
-			string := <-r.Output
-			d.OnOutput(*r, string)
-		}
-	}(r.Delegate)
 }
 
 // a debounce function and struct
