@@ -81,11 +81,18 @@ func (w *Watcher) Start() {
 					w.notifier.Remove(event.Name)
 				}
 
-				for _, pattern := range w.patterns {
-					if pattern.MatchString(event.Name) && (event.Op.Has(fsnotify.Write) || event.Op.Has(fsnotify.Rename)) {
+				if event.Op.Has(fsnotify.Write) || event.Op.Has(fsnotify.Rename) {
+					if len(w.patterns) == 0 {
 						log.Printf("Change detected[%s]: %s\n", event.Op.String(), event.Name)
 						w.changeListener(event.Name, event.Op.String())
-						break
+					} else {
+						for _, pattern := range w.patterns {
+							if pattern.MatchString(event.Name) {
+								log.Printf("Change detected[%s]: %s\n", event.Op.String(), event.Name)
+								w.changeListener(event.Name, event.Op.String())
+								break
+							}
+						}
 					}
 				}
 

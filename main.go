@@ -46,21 +46,24 @@ func main() {
 	}
 
 	m := mediator.NewMediator()
-	// creates a new file watcher
-	w = watcher.NewWatcher(watchList, extensionList)
-	defer w.Close()
 
 	p = viewport.NewProgram(strings.Join(command, " "), m)
 	r := runner.NewRunner(command, delay)
 	r.SetMediator(m)
 
-	onChange := func(path string, change string) {
-		p.Append(fmt.Sprintf("Change detected[%s]: %s\n", change, path))
-		m.SendRequestRestart()
-	}
-	w.SetChangeListener(onChange)
+	if len(watchList) > 0 {
+		// creates a new file watcher
+		w = watcher.NewWatcher(watchList, extensionList)
+		defer w.Close()
 
-	w.Start()
+		onChange := func(path string, change string) {
+			p.Append(fmt.Sprintf("Change detected[%s]: %s\n", change, path))
+			m.SendRequestRestart()
+		}
+		w.SetChangeListener(onChange)
+
+		w.Start()
+	}
 
 	go r.Start()
 	p.Run()
