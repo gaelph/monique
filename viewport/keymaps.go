@@ -10,6 +10,9 @@ type KeyMap struct {
 	NextMatch     key.Binding
 	PreviousMatch key.Binding
 	Quit          key.Binding
+	HalfPageUp    key.Binding
+	HalfPageDown  key.Binding
+	Restart       key.Binding
 }
 
 func DefaultKeyBinding() KeyMap {
@@ -21,5 +24,8 @@ func DefaultKeyBinding() KeyMap {
 		NextMatch:     key.NewBinding(key.WithKeys("n")),
 		PreviousMatch: key.NewBinding(key.WithKeys("N")),
 		Quit:          key.NewBinding(key.WithKeys("ctrl+c")),
+		HalfPageUp:    key.NewBinding(key.WithKeys("ctrl+u")),
+		HalfPageDown:  key.NewBinding(key.WithKeys("ctrl+d")),
+		Restart:       key.NewBinding(key.WithKeys("ctrl+r")),
 	}
 }

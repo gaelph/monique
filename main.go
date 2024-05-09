@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gaelph/monique/mediator"
 	"github.com/gaelph/monique/runner"
 	"github.com/gaelph/monique/viewport"
 	"github.com/gaelph/monique/watcher"
@@ -44,17 +45,18 @@ func main() {
 		extensionList[idx] = strings.TrimSpace(ext)
 	}
 
+	m := mediator.NewMediator()
 	// creates a new file watcher
 	w = watcher.NewWatcher(watchList, extensionList)
 	defer w.Close()
 
-	p = viewport.NewProgram()
+	p = viewport.NewProgram(strings.Join(command, " "), m)
 	r := runner.NewRunner(command, delay)
-	r.SetDelegate(p)
+	r.SetMediator(m)
 
 	onChange := func(path string, change string) {
 		p.Append(fmt.Sprintf("Change detected[%s]: %s\n", change, path))
-		r.Restart()
+		m.SendRequestRestart()
 	}
 	w.SetChangeListener(onChange)
 

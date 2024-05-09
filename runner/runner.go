@@ -2,23 +2,19 @@ package runner
 
 import (
 	"context"
+	"log"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/creack/pty"
+
+	"github.com/gaelph/monique/mediator"
 )
 
-type RunnerDelegate interface {
-	OnStart(r Runner)
-	OnError(r Runner, err error)
-	OnKill(r Runner)
-	OnStop(r Runner)
-	OnOutput(r Runner, output string)
-}
-
 type Runner struct {
-	Delegate         RunnerDelegate
+	mediator         mediator.Mediator
 	control          chan bool
 	debouncedRestart func()
 	Command          []string
@@ -39,11 +35,17 @@ func NewRunner(command []string, delay int) *Runner {
 	return r
 }
 
+func (r *Runner) SetMediator(mediator mediator.Mediator) {
+	r.mediator = mediator
+	r.mediator.AddListener(r)
+}
+
 func (r *Runner) Start() {
+	log.Println("Starting process")
 	time.Sleep(time.Duration(r.delay) * time.Millisecond)
 
-	if r.Delegate != nil {
-		r.Delegate.OnStart(*r)
+	if r.mediator != nil {
+		r.mediator.SendStart(strings.Join(r.Command, " "))
 	}
 
 	cmdName := r.Command[0]
@@ -51,8 +53,8 @@ func (r *Runner) Start() {
 	cmd := exec.CommandContext(context.Background(), cmdName, cmdArgs...)
 	t, err := pty.Start(cmd)
 	if err != nil {
-		if r.Delegate != nil {
-			r.Delegate.OnError(*r, err)
+		if r.mediator != nil {
+			r.mediator.SendError(err)
 		}
 		return
 	}
@@ -62,11 +64,11 @@ func (r *Runner) Start() {
 			bytes := make([]byte, 1024)
 			n, err := t.Read(bytes)
 			// r.Output <- string(bytes[:n])
-			go r.Delegate.OnOutput(*r, string(bytes[:n]))
+			go r.mediator.SendOutput(string(bytes[:n]))
 
 			if err != nil {
-				if r.Delegate != nil {
-					r.Delegate.OnStop(*r)
+				if r.mediator != nil {
+					r.mediator.SendStop()
 				}
 				return
 			}
@@ -80,13 +82,14 @@ func (r *Runner) Start() {
 
 	<-r.control
 	cmd.Process.Signal(syscall.SIGTERM)
-	if r.Delegate != nil {
-		r.Delegate.OnKill(*r)
+	if r.mediator != nil {
+		r.mediator.SendKill()
 	}
 }
 
 func (r *Runner) Stop() {
-	go r.Delegate.OnOutput(*r, "Killing process\n")
+	log.Println("Killing process")
+	go r.mediator.SendOutput("Killing process\n")
 	r.control <- true
 }
 
@@ -100,10 +103,6 @@ func (r *Runner) restart() {
 	go r.Start()
 }
 
-func (r *Runner) SetDelegate(delegate RunnerDelegate) {
-	r.Delegate = delegate
-}
-
 // a debounce function and struct
 func debounce(f func(), d int) func() {
 	var timer *time.Timer
@@ -115,4 +114,25 @@ func debounce(f func(), d int) func() {
 			f()
 		})
 	}
+}
+
+// MARK: - MediatorListener
+
+func (runner *Runner) OnStart(command string) {
+
+}
+func (runner *Runner) OnError(err error) {
+
+}
+func (runner *Runner) OnKill() {
+
+}
+func (runner *Runner) OnStop() {
+
+}
+func (runner *Runner) OnOutput(output string) {
+
+}
+func (runner *Runner) OnRequestRestart() {
+	runner.debouncedRestart()
 }

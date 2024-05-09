@@ -2,6 +2,7 @@ package watcher
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -53,7 +54,7 @@ func (w *Watcher) Start() {
 				fmt.Println("ERROR", err)
 				continue
 			}
-			fmt.Printf("Will watch %s\n", directory)
+			log.Printf("Will watch %s\n", directory)
 		} else if file.Mode()&os.ModeSymlink == os.ModeSymlink {
 			fmt.Printf("ERROR: %s is a symlink\n", directory)
 		} else {
@@ -82,6 +83,7 @@ func (w *Watcher) Start() {
 
 				for _, pattern := range w.patterns {
 					if pattern.MatchString(event.Name) && (event.Op.Has(fsnotify.Write) || event.Op.Has(fsnotify.Rename)) {
+						log.Printf("Change detected[%s]: %s\n", event.Op.String(), event.Name)
 						w.changeListener(event.Name, event.Op.String())
 						break
 					}
