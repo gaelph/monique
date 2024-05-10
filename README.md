@@ -71,3 +71,8 @@ While the input field is focused, you can use the following keys:
 Currently, it uses the default golang regexp package to parse the filter and
 search patterns. It is case sensitive.
 
+## Acknowledgments
+
+Uses:
+- [Bubble Tea](https://github.com/charmbracelet/bubbletea)
+- [PTY](https://github.com/creack/pty)
