@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/gaelph/monique/mediator"
@@ -21,24 +22,35 @@ func (w *watchTargets) Set(value string) error {
 	return nil
 }
 
-var watchList watchTargets
-var dir string
-var delay int
-var exts string
-var extensionList []string
-var command []string
-
 var p *viewport.Program
 
 var w *watcher.Watcher
 
 func main() {
+	var watchList watchTargets
+	var delay int
+	var exts string
+	var extensionList []string
+	var command []string
+	var showHelp bool
+
 	flag.Var(&watchList, "watch", "path to a directory to watch")
+	flag.Var(&watchList, "w", "shorthand for -watch")
 	flag.StringVar(&exts, "exts", "", "file extensions")
+	flag.StringVar(&exts, "e", "", "shorthand for -exts")
 	flag.IntVar(&delay, "delay", 100, "delay in ms")
+	flag.IntVar(&delay, "d", 100, "shorthand for -delay")
+	flag.BoolVar(&showHelp, "help", false, "show help")
+	flag.BoolVar(&showHelp, "h", false, "shorthand for -help")
 
 	flag.Parse()
 	command = flag.Args()
+
+	if showHelp {
+		printHelp()
+		os.Exit(0)
+		return
+	}
 
 	extensionList = strings.Split(exts, ",")
 	for idx, ext := range extensionList {
@@ -69,4 +81,26 @@ func main() {
 	p.Run()
 
 	r.Stop()
+}
+
+func printHelp() {
+	fmt.Fprint(os.Stderr, `monique - execute commands when files change, filter the output, live
+
+Usage:  monique [options] <command>
+  monique <command>
+  monique [[-watch <path>]... [-exts <ext-list>] [-delay <delay>]  <command>
+
+Examples:
+  - Restart a command when any js or css file changes in a single directory:
+    $ monique -watch ./src -exts .js,.css npm run start
+
+  - Run 'make' when any c, cpp, or header file changes in two directories:
+    $ monique -watch ./src -watch ./include -exts .c,.cpp,.h,.hpp make
+
+  - Filter and search on a tail -f call, live:
+    $ monique tail -f /var/log/nginx/access.log
+
+Options:
+`)
+	flag.PrintDefaults()
 }
