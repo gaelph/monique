@@ -55,14 +55,6 @@ const (
 	SEARCH fieldStatus = 1
 )
 
-type searchMatch struct {
-	text  string // The text that matched
-	id    int    // An identifier for the match
-	line  int    // The line in whole content where the match was found
-	start int    // Start column of the match
-	end   int    // End column of the match
-}
-
 // Model holding the state of the application
 type model struct {
 	mediator        mediator.Mediator // Communication Hub
@@ -100,9 +92,6 @@ func NewModel(command string, mediator mediator.Mediator) model {
 	return m
 }
 
-func (m *model) SetMediator(mediator mediator.Mediator) {
-	m.mediator = mediator
-}
 func (m model) Init() tea.Cmd {
 	return textinput.Blink
 }
@@ -124,7 +113,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// TODO: check this behavior
 	// we should only go to bottom appending if we already are there
 	shouldBottom := m.viewport.ScrollPercent() < 1
-	nextLine := -1
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -133,6 +121,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keyMap.Quit):
 			return m.quit()
 
+		// Restart the command
 		case key.Matches(msg, m.keyMap.Restart):
 			m.restart()
 			return m, tea.Batch(cmds...)
@@ -183,12 +172,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Move to the next search match
 		case key.Matches(msg, m.keyMap.NextMatch):
 			if !m.hasFocus() && m.hasSearchResults() {
-				m.activeMatch = m.getNextActiveMatch()
-				nextLine = m.getActiveMatchLine()
-
-				m.renderedLines = m.renderContent()
-				m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
-				cmds = m.goToLine(nextLine, cmds)
+				cmds = m.goToNextMatch(cmds)
 			}
 
 			return m, tea.Batch(cmds...)
@@ -196,12 +180,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Move to the previous search match
 		case key.Matches(msg, m.keyMap.PreviousMatch):
 			if !m.hasFocus() && m.hasSearchResults() {
-				m.activeMatch = m.getPreviousActiveMatch()
-				nextLine = m.getActiveMatchLine()
-
-				m.renderedLines = m.renderContent()
-				m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
-				cmds = m.goToLine(nextLine, cmds)
+				cmds = m.goToPreviousMatch(cmds)
 			}
 
 			return m, tea.Batch(cmds...)
@@ -215,7 +194,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 		cmds = m.goToBottom(cmds)
 
-		// Sets the whole content at once
+	// Sets the whole content at once
 	case SetContentMsg:
 		m.allLines = strings.Split(msg.Content, "\n")
 
@@ -228,11 +207,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = m.goToBottom(cmds)
 		}
 
-		// Appends to the current content
+	// Appends to the current content
 	case AppendContentMsg:
-		// TODO: Find a more efficient way to do this
-		content := strings.Join(m.allLines, "\n") + msg.Content
-		m.allLines = strings.Split(content, "\n")
+		lastLine := m.allLines[len(m.allLines)-1]
+		lastLine += msg.Content
+		newLines := strings.Split(lastLine, "\n")
+
+		m.allLines = append(m.allLines[:len(m.allLines)-1], newLines...)
 
 		m.filteredIndices = m.applyFilter()
 		m.searchResults, m.activeMatch = m.search()
@@ -243,13 +224,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = m.goToBottom(cmds)
 		}
 
-		// Clears the whole content
+	// Clears the whole content
 	case ClearContentMsg:
 		m.allLines = []string{}
 		m.viewport.SetContent("")
 		cmds = m.goToTop(cmds)
 
-		// Resize the viewport
+	// Resize the viewport
 	case tea.WindowSizeMsg:
 		m, cmds = m.resize(msg, cmds)
 	}
@@ -342,7 +323,23 @@ func (m model) startSearch() model {
 	return m
 }
 
-// MARK - Search Privates
+func (m model) goToNextMatch(cmds []tea.Cmd) []tea.Cmd {
+	m.activeMatch = m.getNextActiveMatch()
+	nextLine := m.getActiveMatchLine()
+
+	m.renderedLines = m.renderContent()
+	m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
+	return m.goToLine(nextLine, cmds)
+}
+
+func (m model) goToPreviousMatch(cmds []tea.Cmd) []tea.Cmd {
+	m.activeMatch = m.getPreviousActiveMatch()
+	nextLine := m.getActiveMatchLine()
+
+	m.renderedLines = m.renderContent()
+	m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
+	return m.goToLine(nextLine, cmds)
+}
 
 func (m *model) getActiveMatchLine() int {
 	if len(m.searchResults) == 0 {
@@ -377,33 +374,11 @@ func (m *model) getPreviousActiveMatch() int {
 	return m.activeMatch
 }
 
-func boundLoop(val, min, max int) int {
-	if val < min {
-		val = max
-	}
-	if val > max {
-		val = min
-	}
-
-	return val
-}
-
 // MARK - Viewport Navigation
 
 func (m *model) goToMatch(match int, cmds []tea.Cmd) []tea.Cmd {
 	line := m.searchResults[match].line
 	return m.goToLine(line, cmds)
-}
-
-func clamp(val, min, max int) int {
-	if val < min {
-		return min
-	}
-	if val > max {
-		return max
-	}
-
-	return val
 }
 
 func (m *model) goToLine(line int, cmds []tea.Cmd) []tea.Cmd {
@@ -493,10 +468,6 @@ func (m model) isSearching() bool {
 	return m.fieldStatus == SEARCH
 }
 
-func (m model) hasSearchResults() bool {
-	return len(m.searchResults) > 0 && m.activeMatch != -1
-}
-
 func (m model) inputPrompt() string {
 	switch m.fieldStatus {
 	case FILTER:
@@ -561,54 +532,6 @@ func (m model) footerView() string {
 	return m.textinput.View()
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func (m model) search() ([]searchMatch, int) {
-	if m.searchString == "" {
-		return []searchMatch{}, -1
-	}
-
-	reg, err := regexp.Compile(m.searchString)
-	if err != nil {
-		return []searchMatch{}, -1
-	}
-
-	searchResults := make([]searchMatch, 0)
-
-	for _, lineNr := range m.filteredIndices {
-		// Don't decorate lines outside of the viewport.
-		// if l < lineStart || l >= lineEnd {
-		// 	lines = append(lines, line)
-		// 	continue
-		// }
-
-		line := m.allLines[lineNr]
-		locations := reg.FindAllStringIndex(line, -1)
-		for _, location := range locations {
-			searchResult := searchMatch{
-				id:    len(searchResults),
-				line:  lineNr,
-				start: location[0],
-				end:   location[1],
-				text:  line[location[0]:location[1]],
-			}
-			searchResults = append(searchResults, searchResult)
-		}
-	}
-
-	nextActiveMatch := m.activeMatch
-	if nextActiveMatch == -1 && len(searchResults) > 0 {
-		nextActiveMatch = len(searchResults) - 1
-	}
-
-	return searchResults, nextActiveMatch
-}
-
 func (m model) renderContent() []string {
 	content := make([]string, len(m.filteredIndices))
 
@@ -618,44 +541,4 @@ func (m model) renderContent() []string {
 	}
 
 	return content
-}
-
-func (m model) searchResultsAtLine(lineNr int) []searchMatch {
-	searchResults := make([]searchMatch, 0)
-
-	for _, match := range m.searchResults {
-		if match.line == lineNr {
-			searchResults = append(searchResults, match)
-		}
-	}
-
-	return searchResults
-}
-
-func decorateLine(line string, searchResults []searchMatch, activeMatch int) string {
-	offsets := make(map[int]int)
-	for _, searchResult := range searchResults {
-		builder := strings.Builder{}
-		offset := offsets[searchResult.line]
-		start := searchResult.start + offset
-		end := searchResult.end + offset
-
-		// from 0 or end of previous match
-		builder.WriteString(line[0:start])
-		// match
-		if activeMatch >= 0 && activeMatch == searchResult.id {
-			styled := activeMatchStyle.Render(searchResult.text)
-			builder.WriteString(styled)
-		} else {
-			styled := searchMatchStyle.Render(searchResult.text)
-			builder.WriteString(styled)
-		}
-		builder.WriteString(line[end:])
-		newLine := builder.String()
-		offset = len(newLine) - len(line)
-		offsets[searchResult.line] += offset
-		line = newLine
-	}
-
-	return line
 }
