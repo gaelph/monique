@@ -64,7 +64,7 @@ func (m model) hasSearchResults() bool {
 	return len(m.searchResults) > 0 && m.activeMatch != -1
 }
 
-func decorateLine(line string, searchResults []searchMatch, activeMatch int) string {
+func decorateLine(line string, searchResults []searchMatch, activeMatch int, lineNr, maxLine int) string {
 	offsets := make(map[int]int)
 	for _, searchResult := range searchResults {
 		builder := strings.Builder{}
@@ -89,6 +89,21 @@ func decorateLine(line string, searchResults []searchMatch, activeMatch int) str
 		line = newLine
 	}
 
+	// This add line numbers. Should this be an option ?
+	// lineWidth := len(strconv.Itoa(maxLine))
+	// lineNrStr := strconv.Itoa(lineNr + 1)
+	// if lineWidth > len(lineNrStr) {
+	// 	lineNrStr = strings.Repeat(" ", lineWidth-len(lineNrStr)) + lineNrStr
+	// }
+	//
+	// lineNrStr = lipgloss.NewStyle().
+	// 	Foreground(softForeground).
+	// 	PaddingLeft(1).
+	// 	PaddingRight(2).
+	// 	Render(lineNrStr)
+	//
+	// return lineNrStr + line
+
 	return line
 }
 
@@ -102,7 +117,18 @@ func (m *model) getActiveMatchLine() int {
 	} else if m.activeMatch >= len(m.searchResults) {
 		m.activeMatch = len(m.searchResults) - 1
 	}
-	return m.searchResults[m.activeMatch].line
+
+	actualLine := m.searchResults[m.activeMatch].line
+
+	lineInBuffer := actualLine
+	for i := 0; i < len(m.filteredIndices); i++ {
+		if m.filteredIndices[i] == actualLine {
+			lineInBuffer = i
+			break
+		}
+	}
+
+	return lineInBuffer
 }
 
 func (m *model) getNextActiveMatch() int {

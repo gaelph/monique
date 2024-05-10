@@ -567,10 +567,11 @@ func (m model) footerView() string {
 
 func (m model) renderContent() []string {
 	content := make([]string, len(m.filteredIndices))
+	totalLines := m.viewport.TotalLineCount()
 
 	for i, lineNr := range m.filteredIndices {
 		matches := m.searchResultsAtLine(lineNr)
-		content[i] = decorateLine(m.allLines[lineNr], matches, m.activeMatch)
+		content[i] = decorateLine(m.allLines[lineNr], matches, m.activeMatch, lineNr, totalLines)
 	}
 
 	return content
