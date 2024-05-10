@@ -41,7 +41,8 @@ func (m model) search() ([]searchMatch, int) {
 	}
 
 	nextActiveMatch := m.activeMatch
-	if (nextActiveMatch == -1 && len(searchResults) > 0) || nextActiveMatch > len(searchResults)-1 {
+	if (nextActiveMatch == -1 && len(searchResults) > 0) ||
+		nextActiveMatch > len(searchResults)-1 {
 		nextActiveMatch = len(searchResults) - 1
 	}
 
@@ -64,7 +65,12 @@ func (m model) hasSearchResults() bool {
 	return len(m.searchResults) > 0 && m.activeMatch != -1
 }
 
-func decorateLine(line string, searchResults []searchMatch, activeMatch int, lineNr, maxLine int) string {
+func decorateLine(
+	line string,
+	searchResults []searchMatch,
+	activeMatch int,
+	lineNr, maxLine int,
+) string {
 	offsets := make(map[int]int)
 	for _, searchResult := range searchResults {
 		builder := strings.Builder{}

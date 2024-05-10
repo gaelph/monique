@@ -119,20 +119,20 @@ func debounce(f func(), d int) func() {
 // MARK: - MediatorListener
 
 func (runner *Runner) OnStart(command string) {
-
 }
+
 func (runner *Runner) OnError(err error) {
-
 }
+
 func (runner *Runner) OnKill() {
-
 }
+
 func (runner *Runner) OnStop() {
-
 }
+
 func (runner *Runner) OnOutput(output string) {
-
 }
+
 func (runner *Runner) OnRequestRestart() {
 	runner.debouncedRestart()
 }

@@ -411,7 +411,10 @@ func (m *model) goToBottom(cmds []tea.Cmd) []tea.Cmd {
 	return cmds
 }
 
-func (m model) resize(msg tea.WindowSizeMsg, cmds []tea.Cmd) (model, []tea.Cmd) {
+func (m model) resize(
+	msg tea.WindowSizeMsg,
+	cmds []tea.Cmd,
+) (model, []tea.Cmd) {
 	headerHeight := lipgloss.Height(m.headerView())
 	footerHeight := lipgloss.Height(m.footerView())
 	verticalMarginHeight := footerHeight + headerHeight
@@ -497,7 +500,10 @@ func (m model) updateStrings() model {
 func (m model) headerView() string {
 	title := fmt.Sprintf(" Monique: %s", m.command)
 	helpText := "help [?] "
-	space := strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title)-lipgloss.Width(helpText)))
+	space := strings.Repeat(
+		" ",
+		max(0, m.viewport.Width-lipgloss.Width(title)-lipgloss.Width(helpText)),
+	)
 
 	return titleStyle.Render(fmt.Sprintf("%s%s%s", title, space, helpText))
 }
@@ -521,9 +527,17 @@ func (m model) footerView() string {
 		help += "[/] to search | [f] to filter"
 	}
 
-	space := strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(help)-lipgloss.Width(statusLine)))
+	space := strings.Repeat(
+		" ",
+		max(
+			0,
+			m.viewport.Width-lipgloss.Width(help)-lipgloss.Width(statusLine),
+		),
+	)
 
-	helpLine := helpLineStyle.Render(fmt.Sprintf("%s%s%s", statusLine, space, help))
+	helpLine := helpLineStyle.Render(
+		fmt.Sprintf("%s%s%s", statusLine, space, help),
+	)
 	input := ""
 	if m.hasFocus() {
 		input = m.textinput.View()
@@ -542,7 +556,13 @@ func (m model) renderContent() []string {
 
 	for i, lineNr := range m.filteredIndices {
 		matches := m.searchResultsAtLine(lineNr)
-		content[i] = decorateLine(m.allLines[lineNr], matches, m.activeMatch, lineNr, totalLines)
+		content[i] = decorateLine(
+			m.allLines[lineNr],
+			matches,
+			m.activeMatch,
+			lineNr,
+			totalLines,
+		)
 	}
 
 	return content

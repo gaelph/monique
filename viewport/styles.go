@@ -22,8 +22,14 @@ const (
 )
 
 var (
-	softBackground lipgloss.AdaptiveColor = lipgloss.AdaptiveColor{Light: BrightGray, Dark: BrightBlack}
-	softForeground lipgloss.AdaptiveColor = lipgloss.AdaptiveColor{Light: Gray, Dark: BrightGray}
+	softBackground lipgloss.AdaptiveColor = lipgloss.AdaptiveColor{
+		Light: BrightGray,
+		Dark:  BrightBlack,
+	}
+	softForeground lipgloss.AdaptiveColor = lipgloss.AdaptiveColor{
+		Light: Gray,
+		Dark:  BrightGray,
+	}
 
 	titleBackground lipgloss.Color = lipgloss.Color(Purple)
 	titleForeground lipgloss.Color = lipgloss.Color(BrightGray)
@@ -40,14 +46,18 @@ var (
 			Foreground(softForeground)
 
 	// Style for a non-active search match
-	searchMatchStyle lipgloss.Style                         = lipgloss.NewStyle().
-				Background(lipgloss.Color(Orange)).    // red
-				Foreground(lipgloss.Color(BrightGray)) // white
+	searchMatchStyle lipgloss.Style = lipgloss.NewStyle().
+				Background(lipgloss.Color(Orange)).
+		// red
+		Foreground(lipgloss.Color(BrightGray))
+		// white
 
-		// Style for the active search match
-	activeMatchStyle                                        = lipgloss.NewStyle().
-				Background(lipgloss.Color(Red)).       // green
-				Foreground(lipgloss.Color(BrightGray)) // white
+	// Style for the active search match
+	activeMatchStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color(Red)).
+		// green
+		Foreground(lipgloss.Color(BrightGray))
+		// white
 
 	// Help View Styles
 	paragraphStyle = lipgloss.NewStyle().

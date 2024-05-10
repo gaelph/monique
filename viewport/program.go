@@ -53,7 +53,9 @@ func (p *Program) Run() {
 
 func (p *Program) OnStart(command string) {
 	p.prog.Send(ClearContentMsg{})
-	p.prog.Send(AppendContentMsg{Content: fmt.Sprintf("Starting %s\n", command)})
+	p.prog.Send(
+		AppendContentMsg{Content: fmt.Sprintf("Starting %s\n", command)},
+	)
 }
 
 func (p *Program) OnError(err error) {

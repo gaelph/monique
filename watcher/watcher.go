@@ -33,7 +33,9 @@ func NewWatcher(directories []string, extensions []string) *Watcher {
 	}
 }
 
-func (w *Watcher) SetChangeListener(changeListener func(string, string)) *Watcher {
+func (w *Watcher) SetChangeListener(
+	changeListener func(string, string),
+) *Watcher {
 	w.changeListener = changeListener
 
 	return w
@@ -76,13 +78,19 @@ func (w *Watcher) Start() {
 			select {
 			// watch for events
 			case event := <-w.notifier.Events:
-				if event.Op.Has(fsnotify.Remove) || event.Op.Has(fsnotify.Rename) {
+				if event.Op.Has(fsnotify.Remove) ||
+					event.Op.Has(fsnotify.Rename) {
 					w.notifier.Remove(event.Name)
 				}
 
-				if event.Op.Has(fsnotify.Write) || event.Op.Has(fsnotify.Rename) {
+				if event.Op.Has(fsnotify.Write) ||
+					event.Op.Has(fsnotify.Rename) {
 					if len(w.patterns) == 0 {
-						log.Printf("Change detected[%s]: %s\n", event.Op.String(), event.Name)
+						log.Printf(
+							"Change detected[%s]: %s\n",
+							event.Op.String(),
+							event.Name,
+						)
 						w.changeListener(event.Name, event.Op.String())
 					} else {
 						for _, pattern := range w.patterns {
