@@ -54,7 +54,6 @@ func (w *Watcher) Start() {
 				log.Println("ERROR", err)
 				continue
 			}
-			log.Printf("Will watch %s\n", directory)
 		} else if file.Mode()&os.ModeSymlink == os.ModeSymlink {
 			log.Printf("ERROR: %s is a symlink\n", directory)
 		} else {

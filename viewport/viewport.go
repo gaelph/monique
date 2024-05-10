@@ -50,6 +50,17 @@ type ClearContentMsg struct{}
 // Type of text input
 type fieldStatus int8
 
+func (f fieldStatus) String() string {
+	switch f {
+	case FILTER:
+		return "Filter"
+	case SEARCH:
+		return "Search"
+	}
+
+	return ""
+}
+
 const (
 	FILTER fieldStatus = 0
 	SEARCH fieldStatus = 1
@@ -209,11 +220,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Appends to the current content
 	case AppendContentMsg:
-		lastLine := m.allLines[len(m.allLines)-1]
+		lastLine := ""
+		// pop the last line off
+		if l := pop(&m.allLines); l != nil {
+			lastLine = *l
+		}
+
 		lastLine += msg.Content
 		newLines := strings.Split(lastLine, "\n")
 
-		m.allLines = append(m.allLines[:len(m.allLines)-1], newLines...)
+		push(&m.allLines, newLines...)
 
 		m.filteredIndices = m.applyFilter()
 		m.searchResults, m.activeMatch = m.search()
@@ -339,39 +355,6 @@ func (m model) goToPreviousMatch(cmds []tea.Cmd) []tea.Cmd {
 	m.renderedLines = m.renderContent()
 	m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 	return m.goToLine(nextLine, cmds)
-}
-
-func (m *model) getActiveMatchLine() int {
-	if len(m.searchResults) == 0 {
-		return -1
-	}
-
-	if m.activeMatch < 0 {
-		m.activeMatch = 0
-	} else if m.activeMatch >= len(m.searchResults) {
-		m.activeMatch = len(m.searchResults) - 1
-	}
-	return m.searchResults[m.activeMatch].line
-}
-
-func (m *model) getNextActiveMatch() int {
-	if m.activeMatch < 0 {
-		m.activeMatch = len(m.searchResults) - 1
-	}
-	m.activeMatch -= 1
-	m.activeMatch = boundLoop(m.activeMatch, 0, len(m.searchResults)-1)
-
-	return m.activeMatch
-}
-
-func (m *model) getPreviousActiveMatch() int {
-	if m.activeMatch < 0 {
-		m.activeMatch = len(m.searchResults) - 1
-	}
-	m.activeMatch += 1
-	m.activeMatch = boundLoop(m.activeMatch, 0, len(m.searchResults)-1)
-
-	return m.activeMatch
 }
 
 // MARK - Viewport Navigation
@@ -508,17 +491,6 @@ func (m model) updateStrings() model {
 	}
 
 	return m
-}
-
-func (f fieldStatus) String() string {
-	switch f {
-	case FILTER:
-		return "Filter"
-	case SEARCH:
-		return "Search"
-	}
-
-	return ""
 }
 
 func (m model) headerView() string {

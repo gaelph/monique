@@ -97,3 +97,36 @@ func decorateLine(line string, searchResults []searchMatch, activeMatch int) str
 
 	return line
 }
+
+func (m *model) getActiveMatchLine() int {
+	if len(m.searchResults) == 0 {
+		return -1
+	}
+
+	if m.activeMatch < 0 {
+		m.activeMatch = 0
+	} else if m.activeMatch >= len(m.searchResults) {
+		m.activeMatch = len(m.searchResults) - 1
+	}
+	return m.searchResults[m.activeMatch].line
+}
+
+func (m *model) getNextActiveMatch() int {
+	if m.activeMatch < 0 {
+		m.activeMatch = len(m.searchResults) - 1
+	}
+	m.activeMatch -= 1
+	m.activeMatch = clampLoop(m.activeMatch, 0, len(m.searchResults)-1)
+
+	return m.activeMatch
+}
+
+func (m *model) getPreviousActiveMatch() int {
+	if m.activeMatch < 0 {
+		m.activeMatch = len(m.searchResults) - 1
+	}
+	m.activeMatch += 1
+	m.activeMatch = clampLoop(m.activeMatch, 0, len(m.searchResults)-1)
+
+	return m.activeMatch
+}
