@@ -43,7 +43,7 @@ func (w *Watcher) Start() {
 	for _, directory := range w.directories {
 		file, err := os.Lstat(directory)
 		if err != nil {
-			fmt.Println("ERROR", err)
+			log.Println("ERROR", err)
 			continue
 		}
 
@@ -51,12 +51,12 @@ func (w *Watcher) Start() {
 			// starting at the root of the project, walk each file/directory searching for
 			// directories
 			if err := filepath.Walk(directory, watchDir(w)); err != nil {
-				fmt.Println("ERROR", err)
+				log.Println("ERROR", err)
 				continue
 			}
 			log.Printf("Will watch %s\n", directory)
 		} else if file.Mode()&os.ModeSymlink == os.ModeSymlink {
-			fmt.Printf("ERROR: %s is a symlink\n", directory)
+			log.Printf("ERROR: %s is a symlink\n", directory)
 		} else {
 			// TODO: refactor this
 			directory, _ := filepath.EvalSymlinks(directory)
@@ -65,7 +65,7 @@ func (w *Watcher) Start() {
 			w.notifier.Add(parent)
 			r, err := regexp.Compile(fmt.Sprintf("%s$", regexp.QuoteMeta(basename)))
 			if err != nil {
-				fmt.Printf("ERROR: %s is not a valid filename", directory)
+				log.Printf("ERROR: %s is not a valid filename", directory)
 				continue
 			}
 			w.patterns = append(w.patterns, r)
@@ -112,7 +112,7 @@ func (w *Watcher) Start() {
 
 				// watch for errors
 			case err := <-w.notifier.Errors:
-				fmt.Println("ERROR", err)
+				log.Println("ERROR", err)
 			}
 		}
 	}()

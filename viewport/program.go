@@ -36,14 +36,14 @@ func (p *Program) Append(content string) {
 func (p *Program) Run() {
 	f, err := tea.LogToFile("monique.log", "debug")
 	if err != nil {
-		fmt.Println("could not log to file:", err)
+		log.Println("could not log to file:", err)
 		os.Exit(1)
 	}
 
 	defer f.Close()
 
 	if _, err := p.prog.Run(); err != nil {
-		fmt.Println("could not run program:", err)
+		log.Println("could not run program:", err)
 		os.Exit(1)
 	}
 }
