@@ -26,12 +26,6 @@ func (m model) search() ([]searchMatch, int) {
 	searchResults := make([]searchMatch, 0)
 
 	for _, lineNr := range m.filteredIndices {
-		// Don't decorate lines outside of the viewport.
-		// if l < lineStart || l >= lineEnd {
-		// 	lines = append(lines, line)
-		// 	continue
-		// }
-
 		line := m.allLines[lineNr]
 		locations := reg.FindAllStringIndex(line, -1)
 		for _, location := range locations {
@@ -47,7 +41,7 @@ func (m model) search() ([]searchMatch, int) {
 	}
 
 	nextActiveMatch := m.activeMatch
-	if nextActiveMatch == -1 && len(searchResults) > 0 {
+	if (nextActiveMatch == -1 && len(searchResults) > 0) || nextActiveMatch > len(searchResults)-1 {
 		nextActiveMatch = len(searchResults) - 1
 	}
 

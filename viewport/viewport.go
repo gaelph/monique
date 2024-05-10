@@ -23,6 +23,10 @@ var (
 			Foreground(lipgloss.Color("15")) // white
 	}()
 
+	helpLineStyle lipgloss.Style                    = lipgloss.NewStyle().
+			Background(lipgloss.Color("15")). // magenta
+			Foreground(lipgloss.Color("8"))
+
 	// Style for a non-active search match
 	searchMatchStyle lipgloss.Style                   = lipgloss.NewStyle().
 				Background(lipgloss.Color("9")). // red
@@ -83,6 +87,7 @@ type model struct {
 	activeMatch     int               // the index of the active search match (in searchResults)
 	fieldStatus     fieldStatus       // current kind of input (filter or search)
 	ready           bool              // whether the model is ready to be rendered
+	showingHelp     bool
 }
 
 func NewModel(command string, mediator mediator.Mediator) model {
@@ -95,7 +100,7 @@ func NewModel(command string, mediator mediator.Mediator) model {
 		keyMap:      DefaultKeyBinding(),
 	}
 
-	m.textinput.Focus()
+	// m.textinput.Focus()
 	m.textinput.Prompt = m.inputPrompt()
 	m.textinput.PromptStyle = m.textinput.PromptStyle.
 		Bold(true)
@@ -128,6 +133,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
+		case key.Matches(msg, m.keyMap.ShowHelp):
+			if !m.hasFocus() {
+				m.showingHelp = true
+
+				return m, tea.Batch(cmds...)
+			}
 		// Quit
 		case key.Matches(msg, m.keyMap.Quit):
 			return m.quit()
@@ -139,7 +150,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Reject the current search/filter
 		case key.Matches(msg, m.keyMap.Blur):
+			if m.showingHelp {
+				m.showingHelp = false
+
+				return m, tea.Batch(cmds...)
+			}
+
 			m = m.blur()
+			m.filteredIndices = m.applyFilter()
+			m.renderedLines = m.renderContent()
+			m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 			cmds = m.goToBottom(cmds)
 
 			return m, tea.Batch(cmds...)
@@ -154,19 +174,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keyMap.Filter):
 			if !m.hasFocus() {
 				m = m.startFilter()
-			}
-			cmds = m.goToBottom(cmds)
+				cmds = m.goToBottom(cmds)
 
-			return m, tea.Batch(cmds...)
+				return m, tea.Batch(cmds...)
+			}
 
 		// Start search
 		case key.Matches(msg, m.keyMap.Search):
 			if !m.hasFocus() {
 				m = m.startSearch()
-			}
-			cmds = m.goToBottom(cmds)
+				cmds = m.goToBottom(cmds)
 
-			return m, tea.Batch(cmds...)
+				return m, tea.Batch(cmds...)
+			}
 
 		case key.Matches(msg, m.keyMap.HalfPageDown):
 			if !m.viewport.AtBottom() {
@@ -182,19 +202,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Move to the next search match
 		case key.Matches(msg, m.keyMap.NextMatch):
+			log.Printf("Next Match %+v\n", msg)
 			if !m.hasFocus() && m.hasSearchResults() {
 				cmds = m.goToNextMatch(cmds)
+				return m, tea.Batch(cmds...)
 			}
-
-			return m, tea.Batch(cmds...)
 
 		// Move to the previous search match
 		case key.Matches(msg, m.keyMap.PreviousMatch):
+			log.Printf("Previous Match: %+v\n", msg)
 			if !m.hasFocus() && m.hasSearchResults() {
 				cmds = m.goToPreviousMatch(cmds)
+				return m, tea.Batch(cmds...)
 			}
-
-			return m, tea.Batch(cmds...)
 		}
 
 		m.filteredIndices = m.applyFilter()
@@ -263,7 +283,13 @@ func (m model) View() string {
 	if !m.ready {
 		return "\n  Initializing..."
 	}
-	return fmt.Sprintf("%s\n%s\n%s", m.headerView(), m.viewport.View(), m.footerView())
+	content := ""
+	if m.showingHelp {
+		content = m.helpView()
+	} else {
+		content = m.viewport.View()
+	}
+	return fmt.Sprintf("%s\n%s\n%s", m.headerView(), content, m.footerView())
 }
 
 // Returns all the line indices
@@ -323,23 +349,23 @@ func (m model) accept() model {
 
 func (m model) startFilter() model {
 	m.fieldStatus = FILTER
+	m.textinput.Focus()
 	m.textinput.SetValue(m.filterString)
 	m.textinput.Prompt = m.inputPrompt()
-	m.textinput.Focus()
 
 	return m
 }
 
 func (m model) startSearch() model {
 	m.fieldStatus = SEARCH
+	m.textinput.Focus()
 	m.textinput.SetValue(m.searchString)
 	m.textinput.Prompt = m.inputPrompt()
-	m.textinput.Focus()
 
 	return m
 }
 
-func (m model) goToNextMatch(cmds []tea.Cmd) []tea.Cmd {
+func (m *model) goToNextMatch(cmds []tea.Cmd) []tea.Cmd {
 	m.activeMatch = m.getNextActiveMatch()
 	nextLine := m.getActiveMatchLine()
 
@@ -348,7 +374,7 @@ func (m model) goToNextMatch(cmds []tea.Cmd) []tea.Cmd {
 	return m.goToLine(nextLine, cmds)
 }
 
-func (m model) goToPreviousMatch(cmds []tea.Cmd) []tea.Cmd {
+func (m *model) goToPreviousMatch(cmds []tea.Cmd) []tea.Cmd {
 	m.activeMatch = m.getPreviousActiveMatch()
 	nextLine := m.getActiveMatchLine()
 
@@ -365,6 +391,8 @@ func (m *model) goToMatch(match int, cmds []tea.Cmd) []tea.Cmd {
 }
 
 func (m *model) goToLine(line int, cmds []tea.Cmd) []tea.Cmd {
+	log.Printf("🚀  ~ m/v/viewport.go:373 ~ line: %+v\n", line)
+	log.Printf("🚀  ~ m/v/viewport.go:375 ~ m.scrollPos: %+v\n", m.scrollPos)
 	if line < m.scrollPos {
 		diffUp := m.scrollPos - line
 		m.viewport.LineUp(diffUp)
@@ -376,6 +404,8 @@ func (m *model) goToLine(line int, cmds []tea.Cmd) []tea.Cmd {
 		m.scrollPos += diffDown
 		m.viewport.SetYOffset(m.scrollPos)
 	}
+	log.Printf("🚀  ~ m/v/viewport.go:387 ~ m.viewport.YOffset: %+v\n", m.viewport.YOffset)
+	log.Printf("🚀  ~ m/v/viewport.go:384 ~ m.scrollPos: %+v\n", m.scrollPos)
 
 	log.Println(cmds)
 
@@ -452,16 +482,15 @@ func (m model) isSearching() bool {
 }
 
 func (m model) inputPrompt() string {
+	if !m.hasFocus() {
+		return ""
+	}
+
 	switch m.fieldStatus {
 	case FILTER:
 		return fmt.Sprintf("%s > ", m.fieldStatus.String())
 	case SEARCH:
-		active := m.activeMatch
-		if active < 0 {
-			active = 0
-		}
-		active = len(m.searchResults) - active
-		return fmt.Sprintf("%s [%d/%d] > ", m.fieldStatus.String(), active, len(m.searchResults))
+		return fmt.Sprintf("%s > ", m.fieldStatus.String())
 	}
 	return "> "
 }
@@ -474,6 +503,7 @@ func (m model) clearCurrentString() model {
 	case SEARCH:
 		m.searchString = ""
 		m.textinput.SetValue(m.searchString)
+		m.searchResults = []searchMatch{}
 	}
 
 	return m
@@ -494,14 +524,45 @@ func (m model) updateStrings() model {
 }
 
 func (m model) headerView() string {
-	title := titleStyle.Render(fmt.Sprintf(" Monique: %s", m.command))
-	line := strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title)))
-	line = titleStyle.Render(line)
-	return lipgloss.JoinHorizontal(lipgloss.Center, title, line)
+	title := fmt.Sprintf(" Monique: %s", m.command)
+	helpText := "help [?] "
+	space := strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(title)-lipgloss.Width(helpText)))
+
+	return titleStyle.Render(fmt.Sprintf("%s%s%s", title, space, helpText))
 }
 
 func (m model) footerView() string {
-	return m.textinput.View()
+	statusLine := ""
+	if m.filterString != "" {
+		statusLine = fmt.Sprintf("Filter: %s | ", m.filterString)
+	}
+	if m.searchString != "" {
+		statusLine += fmt.Sprintf("Search: %s |", m.searchString)
+	}
+
+	help := ""
+	if m.hasFocus() {
+		help += "[esc] to cancel | [enter] to accept"
+	} else {
+		if m.hasSearchResults() {
+			help += "[n/N] next/previous match | "
+		}
+		help += "[/] to search | [f] to filter"
+	}
+
+	space := strings.Repeat(" ", max(0, m.viewport.Width-lipgloss.Width(help)-lipgloss.Width(statusLine)))
+
+	helpLine := helpLineStyle.Render(fmt.Sprintf("%s%s%s", statusLine, space, help))
+	input := ""
+	if m.hasFocus() {
+		input = m.textinput.View()
+	} else if m.hasSearchResults() {
+		count := len(m.searchResults)
+		n := count - (m.activeMatch)
+		input = fmt.Sprintf("[%d of %d]", n, count)
+	}
+
+	return fmt.Sprintf("%s\n%s", helpLine, input)
 }
 
 func (m model) renderContent() []string {
@@ -513,4 +574,63 @@ func (m model) renderContent() []string {
 	}
 
 	return content
+}
+
+func (m model) helpView() string {
+	paragraphStyle := lipgloss.NewStyle().
+		Background(lipgloss.AdaptiveColor{Light: "15", Dark: "8"}).
+		PaddingTop(1).
+		PaddingBottom(1).
+		PaddingLeft(2).
+		PaddingRight(2)
+
+	blockStyle := lipgloss.NewStyle().
+		Background(lipgloss.AdaptiveColor{Light: "15", Dark: "8"}).
+		PaddingLeft(1).
+		PaddingRight(1)
+
+	headerStyle := lipgloss.NewStyle().
+		Bold(true)
+
+	separatorStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.AdaptiveColor{Light: "8", Dark: "7"})
+
+	defaultKeys := strings.Join([]string{
+		headerStyle.Render("General"),
+		separatorStyle.Render("⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺"),
+		"[f]         filter",
+		"[/]         search",
+		"[ctrl+u]    scroll up",
+		"[ctrl+d]    scroll down",
+		"[ctrl+r]    restart the command",
+		"[ctrl+c]    quit",
+		"",
+		"[n]         go to next search match",
+		"[N]         go to previous search match",
+	}, "\n")
+
+	inputKeys := strings.Join([]string{
+		headerStyle.Render("Search/Filter"),
+		separatorStyle.Render("⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺"),
+		"[esc]       cancel",
+		"[enter]     accept",
+		"[ctrl+u]    clear field",
+		"",
+		"",
+		"",
+		headerStyle.Render("This help"),
+		separatorStyle.Render("⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺"),
+		"[esc]  exit",
+	}, "\n")
+
+	content := lipgloss.JoinHorizontal(lipgloss.Top, paragraphStyle.Render(defaultKeys), paragraphStyle.Render(inputKeys))
+	content = lipgloss.Place(lipgloss.Width(content), lipgloss.Height(content), lipgloss.Center, lipgloss.Center, content, lipgloss.WithWhitespaceBackground(lipgloss.AdaptiveColor{Light: "15", Dark: "8"}))
+	content = blockStyle.Render(content)
+
+	return lipgloss.Place(
+		m.viewport.Width, m.viewport.Height,
+		lipgloss.Center, lipgloss.Center,
+		content,
+		// lipgloss.WithWhitespaceChars("⣿"), lipgloss.WithWhitespaceForeground(lipgloss.Color("8"))
+	)
 }

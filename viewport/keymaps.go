@@ -13,6 +13,7 @@ type KeyMap struct {
 	HalfPageUp    key.Binding
 	HalfPageDown  key.Binding
 	Restart       key.Binding
+	ShowHelp      key.Binding
 }
 
 func DefaultKeyBinding() KeyMap {
@@ -27,5 +28,6 @@ func DefaultKeyBinding() KeyMap {
 		HalfPageUp:    key.NewBinding(key.WithKeys("ctrl+u")),
 		HalfPageDown:  key.NewBinding(key.WithKeys("ctrl+d")),
 		Restart:       key.NewBinding(key.WithKeys("ctrl+r")),
+		ShowHelp:      key.NewBinding(key.WithKeys("?")),
 	}
 }
