@@ -15,29 +15,6 @@ import (
 	"github.com/gaelph/monique/mediator"
 )
 
-var (
-	// Top bar with Monique: <command>
-	titleStyle = func() lipgloss.Style {
-		return lipgloss.NewStyle().
-			Background(lipgloss.Color("5")). // magenta
-			Foreground(lipgloss.Color("15")) // white
-	}()
-
-	helpLineStyle lipgloss.Style                    = lipgloss.NewStyle().
-			Background(lipgloss.Color("15")). // magenta
-			Foreground(lipgloss.Color("8"))
-
-	// Style for a non-active search match
-	searchMatchStyle lipgloss.Style                   = lipgloss.NewStyle().
-				Background(lipgloss.Color("9")). // red
-				Foreground(lipgloss.Color("15")) // white
-
-		// Style for the active search match
-	activeMatchStyle                                   = lipgloss.NewStyle().
-				Background(lipgloss.Color("10")). // green
-				Foreground(lipgloss.Color("15"))  // white
-)
-
 // Set the whole content at once
 type SetContentMsg struct {
 	Content string
@@ -391,8 +368,6 @@ func (m *model) goToMatch(match int, cmds []tea.Cmd) []tea.Cmd {
 }
 
 func (m *model) goToLine(line int, cmds []tea.Cmd) []tea.Cmd {
-	log.Printf("🚀  ~ m/v/viewport.go:373 ~ line: %+v\n", line)
-	log.Printf("🚀  ~ m/v/viewport.go:375 ~ m.scrollPos: %+v\n", m.scrollPos)
 	if line < m.scrollPos {
 		diffUp := m.scrollPos - line
 		m.viewport.LineUp(diffUp)
@@ -404,10 +379,6 @@ func (m *model) goToLine(line int, cmds []tea.Cmd) []tea.Cmd {
 		m.scrollPos += diffDown
 		m.viewport.SetYOffset(m.scrollPos)
 	}
-	log.Printf("🚀  ~ m/v/viewport.go:387 ~ m.viewport.YOffset: %+v\n", m.viewport.YOffset)
-	log.Printf("🚀  ~ m/v/viewport.go:384 ~ m.scrollPos: %+v\n", m.scrollPos)
-
-	log.Println(cmds)
 
 	return cmds
 }
@@ -575,63 +546,4 @@ func (m model) renderContent() []string {
 	}
 
 	return content
-}
-
-func (m model) helpView() string {
-	paragraphStyle := lipgloss.NewStyle().
-		Background(lipgloss.AdaptiveColor{Light: "15", Dark: "8"}).
-		PaddingTop(1).
-		PaddingBottom(1).
-		PaddingLeft(2).
-		PaddingRight(2)
-
-	blockStyle := lipgloss.NewStyle().
-		Background(lipgloss.AdaptiveColor{Light: "15", Dark: "8"}).
-		PaddingLeft(1).
-		PaddingRight(1)
-
-	headerStyle := lipgloss.NewStyle().
-		Bold(true)
-
-	separatorStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.AdaptiveColor{Light: "8", Dark: "7"})
-
-	defaultKeys := strings.Join([]string{
-		headerStyle.Render("General"),
-		separatorStyle.Render("⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺"),
-		"[f]         filter",
-		"[/]         search",
-		"[ctrl+u]    scroll up",
-		"[ctrl+d]    scroll down",
-		"[ctrl+r]    restart the command",
-		"[ctrl+c]    quit",
-		"",
-		"[n]         go to next search match",
-		"[N]         go to previous search match",
-	}, "\n")
-
-	inputKeys := strings.Join([]string{
-		headerStyle.Render("Search/Filter"),
-		separatorStyle.Render("⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺"),
-		"[esc]       cancel",
-		"[enter]     accept",
-		"[ctrl+u]    clear field",
-		"",
-		"",
-		"",
-		headerStyle.Render("This help"),
-		separatorStyle.Render("⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺⎺"),
-		"[esc]  exit",
-	}, "\n")
-
-	content := lipgloss.JoinHorizontal(lipgloss.Top, paragraphStyle.Render(defaultKeys), paragraphStyle.Render(inputKeys))
-	content = lipgloss.Place(lipgloss.Width(content), lipgloss.Height(content), lipgloss.Center, lipgloss.Center, content, lipgloss.WithWhitespaceBackground(lipgloss.AdaptiveColor{Light: "15", Dark: "8"}))
-	content = blockStyle.Render(content)
-
-	return lipgloss.Place(
-		m.viewport.Width, m.viewport.Height,
-		lipgloss.Center, lipgloss.Center,
-		content,
-		// lipgloss.WithWhitespaceChars("⣿"), lipgloss.WithWhitespaceForeground(lipgloss.Color("8"))
-	)
 }
