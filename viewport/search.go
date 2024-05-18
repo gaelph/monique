@@ -3,6 +3,7 @@ package viewport
 import (
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 type searchMatch struct {
@@ -13,12 +14,35 @@ type searchMatch struct {
 	end   int    // End column of the match
 }
 
+func shouldCaseSensitive(pattern string) bool {
+	for _, r := range pattern {
+		if unicode.IsUpper(r) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func makeInsensitive(pattern string) string {
+	return "(?i)" + pattern
+}
+
+func addTopLevelCapture(pattern string) string {
+	return "(" + pattern + ")"
+}
+
 func (m model) search(lines []string, indices []int) ([]searchMatch, int) {
 	if m.searchString == "" {
 		return []searchMatch{}, -1
 	}
 
-	reg, err := regexp.Compile(m.searchString)
+	pattern := addTopLevelCapture(m.searchString)
+	if !shouldCaseSensitive(pattern) {
+		pattern = makeInsensitive(pattern)
+	}
+
+	reg, err := regexp.Compile(pattern)
 	if err != nil {
 		return []searchMatch{}, -1
 	}

@@ -296,7 +296,12 @@ func (m model) applyFilter(lines []string) (indices []int) {
 		return m.everything(lines)
 	}
 
-	reg, err := regexp.Compile(m.filterString)
+	pattern := addTopLevelCapture(m.filterString)
+	if !shouldCaseSensitive(pattern) {
+		pattern = makeInsensitive(pattern)
+	}
+
+	reg, err := regexp.Compile(pattern)
 	if err != nil {
 		return m.everything(lines)
 	}

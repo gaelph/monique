@@ -69,7 +69,15 @@ While the input field is focused, you can use the following keys:
 
 ### Filtering and Searching pattern
 Currently, it uses the default golang regexp package to parse the filter and
-search patterns. It is case sensitive.
+search patterns.
+
+Monique uses "smart sensitivity" when it comes to case. It means, that it will
+be case sensitive if your filter or search pattern contains at least one
+capital letter, but is case insensitive otherwise.
+
+Monique also adds a "top-level capture group", which let's you type patterns
+like: `DEBUG|TRACE` without parenthesis, if all you are looking for are lines
+containing either of those to words
 
 ## Acknowledgments
 
