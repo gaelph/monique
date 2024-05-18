@@ -64,7 +64,9 @@ func (r *Runner) Start() {
 			bytes := make([]byte, 1024)
 			n, err := t.Read(bytes)
 			// r.Output <- string(bytes[:n])
-			go r.mediator.SendOutput(string(bytes[:n]))
+			outStr := string(bytes[:n])
+			log.Printf("🚀  ~ e/r/runner.go:67 ~ outStr: %+v\n", outStr)
+			r.mediator.SendOutput(outStr)
 
 			if err != nil {
 				if r.mediator != nil {

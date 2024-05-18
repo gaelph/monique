@@ -13,7 +13,7 @@ type searchMatch struct {
 	end   int    // End column of the match
 }
 
-func (m model) search() ([]searchMatch, int) {
+func (m model) search(lines []string, indices []int) ([]searchMatch, int) {
 	if m.searchString == "" {
 		return []searchMatch{}, -1
 	}
@@ -25,8 +25,8 @@ func (m model) search() ([]searchMatch, int) {
 
 	searchResults := make([]searchMatch, 0)
 
-	for _, lineNr := range m.filteredIndices {
-		line := m.allLines[lineNr]
+	for _, lineNr := range indices {
+		line := lines[lineNr]
 		locations := reg.FindAllStringIndex(line, -1)
 		for _, location := range locations {
 			searchResult := searchMatch{

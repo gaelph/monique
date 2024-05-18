@@ -23,16 +23,16 @@ const (
 
 var (
 	softBackground lipgloss.AdaptiveColor = lipgloss.AdaptiveColor{
-		Light: BrightGray,
-		Dark:  BrightBlack,
+		Dark:  BrightGray,
+		Light: BrightBlack,
 	}
 	softForeground lipgloss.AdaptiveColor = lipgloss.AdaptiveColor{
-		Light: Gray,
-		Dark:  BrightGray,
+		Dark:  Gray,
+		Light: BrightGray,
 	}
 
 	titleBackground lipgloss.Color = lipgloss.Color(Purple)
-	titleForeground lipgloss.Color = lipgloss.Color(BrightGray)
+	titleForeground lipgloss.Color = lipgloss.Color(Black)
 
 	// Top bar with Monique: <command>
 	titleStyle = func() lipgloss.Style {

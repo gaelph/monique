@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/muesli/reflow/wrap"
 
 	"github.com/gaelph/monique/mediator"
 )
@@ -67,7 +68,10 @@ type model struct {
 	showingHelp     bool
 }
 
-func NewModel(command string, mediator mediator.Mediator) model {
+func NewModel(
+	command string,
+	mediator mediator.Mediator,
+) model {
 	m := model{
 		command:     command,
 		mediator:    mediator,
@@ -134,8 +138,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m = m.blur()
-			m.filteredIndices = m.applyFilter()
-			m.renderedLines = m.renderContent()
+			m.filteredIndices = m.applyFilter(m.allLines)
+			m.renderedLines = m.renderContent(m.allLines, m.filteredIndices)
 			m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 			cmds = m.goToBottom(cmds)
 
@@ -194,9 +198,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		m.filteredIndices = m.applyFilter()
-		m.searchResults, m.activeMatch = m.search()
-		m.renderedLines = m.renderContent()
+		m.filteredIndices = m.applyFilter(m.allLines)
+		m.searchResults, m.activeMatch = m.search(m.allLines, m.filteredIndices)
+		m.renderedLines = m.renderContent(m.allLines, m.filteredIndices)
 
 		// Sets the content with filter and search highlights if any
 		m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
@@ -206,9 +210,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case SetContentMsg:
 		m.allLines = strings.Split(msg.Content, "\n")
 
-		m.filteredIndices = m.applyFilter()
-		m.searchResults, m.activeMatch = m.search()
-		m.renderedLines = m.renderContent()
+		m.filteredIndices = m.applyFilter(m.allLines)
+		m.searchResults, m.activeMatch = m.search(m.allLines, m.filteredIndices)
+		m.renderedLines = m.renderContent(m.allLines, m.filteredIndices)
 		m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 
 		if shouldBottom {
@@ -217,20 +221,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// Appends to the current content
 	case AppendContentMsg:
-		lastLine := ""
-		// pop the last line off
-		if l := pop(&m.allLines); l != nil {
-			lastLine = *l
-		}
+		log.Printf("🚀  ~ e/v/viewport.go:223 ~ msg.Content: %+v\n", msg.Content)
+		m.allLines = strings.Split(
+			strings.Join(m.allLines, "\n")+wrap.String(msg.Content, m.viewport.Width),
+			"\n",
+		)
 
-		lastLine += msg.Content
-		newLines := strings.Split(lastLine, "\n")
+		// lastLine := ""
+		// // pop the last line off
+		// if l := pop(&m.allLines); l != nil {
+		// 	lastLine = *l
+		// }
+		//
+		// lastLine += msg.Content
+		// newLines := strings.Split(lastLine, "\n")
+		//
+		// push(&m.allLines, newLines...)
 
-		push(&m.allLines, newLines...)
-
-		m.filteredIndices = m.applyFilter()
-		m.searchResults, m.activeMatch = m.search()
-		m.renderedLines = m.renderContent()
+		m.filteredIndices = m.applyFilter(m.allLines)
+		m.searchResults, m.activeMatch = m.search(m.allLines, m.filteredIndices)
+		m.renderedLines = m.renderContent(m.allLines, m.filteredIndices)
 		m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 
 		if shouldBottom {
@@ -240,6 +250,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Clears the whole content
 	case ClearContentMsg:
 		m.allLines = []string{}
+		m.renderedLines = []string{}
 		m.viewport.SetContent("")
 		cmds = m.goToTop(cmds)
 
@@ -264,33 +275,34 @@ func (m model) View() string {
 	if m.showingHelp {
 		content = m.helpView()
 	} else {
+		m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 		content = m.viewport.View()
 	}
 	return fmt.Sprintf("%s\n%s\n%s", m.headerView(), content, m.footerView())
 }
 
 // Returns all the line indices
-func (m model) everything() []int {
+func (m model) everything(lines []string) []int {
 	indices := make([]int, len(m.allLines))
-	for i := range m.allLines {
+	for i := range lines {
 		indices[i] = i
 	}
 	return indices
 }
 
 // Apply the filter and return the matching indices
-func (m model) applyFilter() (indices []int) {
+func (m model) applyFilter(lines []string) (indices []int) {
 	if m.filterString == "" {
-		return m.everything()
+		return m.everything(lines)
 	}
 
 	reg, err := regexp.Compile(m.filterString)
 	if err != nil {
-		return m.everything()
+		return m.everything(lines)
 	}
 
 	indices = make([]int, 0)
-	for i, line := range m.allLines {
+	for i, line := range lines {
 		if reg.Match([]byte(line)) {
 			indices = append(indices, i)
 		}
@@ -346,7 +358,7 @@ func (m *model) goToNextMatch(cmds []tea.Cmd) []tea.Cmd {
 	m.activeMatch = m.getNextActiveMatch()
 	nextLine := m.getActiveMatchLine()
 
-	m.renderedLines = m.renderContent()
+	m.renderedLines = m.renderContent(m.allLines, m.filteredIndices)
 	m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 	return m.goToLine(nextLine, cmds)
 }
@@ -355,7 +367,7 @@ func (m *model) goToPreviousMatch(cmds []tea.Cmd) []tea.Cmd {
 	m.activeMatch = m.getPreviousActiveMatch()
 	nextLine := m.getActiveMatchLine()
 
-	m.renderedLines = m.renderContent()
+	m.renderedLines = m.renderContent(m.allLines, m.filteredIndices)
 	m.viewport.SetContent(strings.Join(m.renderedLines, "\n"))
 	return m.goToLine(nextLine, cmds)
 }
@@ -373,10 +385,10 @@ func (m *model) goToLine(line int, cmds []tea.Cmd) []tea.Cmd {
 		m.viewport.LineUp(diffUp)
 		m.scrollPos -= diffUp
 		m.viewport.SetYOffset(m.scrollPos)
-	} else if line > m.scrollPos+m.viewport.Height {
+	} else if line >= m.scrollPos+m.viewport.Height {
 		diffDown := line - (m.scrollPos + m.viewport.Height)
 		m.viewport.LineDown(diffDown)
-		m.scrollPos += diffDown
+		m.scrollPos += diffDown + 1
 		m.viewport.SetYOffset(m.scrollPos)
 	}
 
@@ -550,14 +562,14 @@ func (m model) footerView() string {
 	return fmt.Sprintf("%s\n%s", helpLine, input)
 }
 
-func (m model) renderContent() []string {
-	content := make([]string, len(m.filteredIndices))
+func (m model) renderContent(lines []string, indices []int) []string {
+	content := make([]string, len(indices))
 	totalLines := m.viewport.TotalLineCount()
 
-	for i, lineNr := range m.filteredIndices {
+	for i, lineNr := range indices {
 		matches := m.searchResultsAtLine(lineNr)
 		content[i] = decorateLine(
-			m.allLines[lineNr],
+			lines[lineNr],
 			matches,
 			m.activeMatch,
 			lineNr,

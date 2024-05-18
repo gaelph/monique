@@ -16,12 +16,16 @@ type Program struct {
 }
 
 func NewProgram(command string, mediator mediator.Mediator) *Program {
+	model := NewModel(command, mediator)
+
+	teaProgram := tea.NewProgram(
+		model,
+		tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
+		tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
+	)
+
 	prog := &Program{
-		prog: tea.NewProgram(
-			NewModel(command, mediator),
-			tea.WithAltScreen(),       // use the full size of the terminal in its "alternate screen buffer"
-			tea.WithMouseCellMotion(), // turn on mouse support so we can track the mouse wheel
-		),
+		prog:     teaProgram,
 		mediator: mediator,
 	}
 
