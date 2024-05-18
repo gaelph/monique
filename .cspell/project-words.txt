@@ -5,3 +5,4 @@ bubbletea
 lipgloss
 keymaps
 cmds
+gaelph
